@@ -1,0 +1,24 @@
+kind: LDAPSyncConfig
+apiVersion: v1
+url: ldap://org.local:389
+bindDN: cn=Openshift,ou=Service Accounts,ou=Accounts,dc=org,dc=local
+bindPassword:
+  file: /usr/local/ldap/bindPassword.encrypted
+  keyFile: /usr/local/ldap/bindPassword.key
+insecure: true
+ 
+groupUIDNameMapping:
+  CN=role_OCP_DEVOPS_PROD,OU=Org Roles,OU=Securty Groups,DC=org,DC=local: ocp-devops-prod
+  CN=role_OCP_DEVOPS_NON_PROD,OU=Org Roles,OU=security Groups,DC=org,DC=local: ocp-devops-np
+  CN=role_OCP_CLUSTER_ADMIN,OU=Org Roles,OU=Security Groups,DC=org,DC=local: ocp-cluster-admin
+
+activeDirectory:
+  usersQuery:
+    baseDN: OU=Accounts,DC=org,DC=local
+    filter: (objectClass=person)
+    scope: sub
+    derefAliases: never
+    pageSize: 0
+    userUIDAttribute: dn
+  userNameAttributes: [ sAMAccountName ]
+  groupMembershipAttributes: [ memberOf ]

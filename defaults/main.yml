@@ -1,0 +1,9 @@
+---
+# defaults file for ocp-rbac
+
+openshift_ldapsync_serviceaccount: ldapsync
+openshift_ldapsync_namespace: openshift-infra
+openshift_ldapsync_configmap_name: ldapsync-config
+openshift_ldapsync_schedule: "*/60 * * * *"
+
+openshift_artifact_dir: /etc/origin/master

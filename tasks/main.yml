@@ -1,0 +1,83 @@
+---
+# tasks file for ocp-rbac
+
+- name: Create required folders
+  file: 
+    path: "{{ item }}"
+    state: directory
+  with_items:
+   - "{{ openshift_config_dir }}/ldapsync"
+
+# copy each file over that matches the given pattern
+- name: copy artifact files
+  copy: 
+    src: "{{ item }}" 
+    dest: "{{ openshift_config_dir }}/ldapsync"
+    owner: root 
+    mode: 600
+  with_items:
+    - "{{ role_path }}/files/ldapsync/"     
+
+# LDAP sync job
+- name: Create the LDAP sync service account
+  oc_serviceaccount:
+    name: "{{ openshift_ldapsync_serviceaccount }}"
+    namespace: "{{ openshift_ldapsync_namespace }}"
+
+- name: Add cluster-admin to LDAP sync account
+  oc_adm_policy_user:
+    user: "system:serviceaccount:{{ openshift_ldapsync_namespace }}:{{ openshift_ldapsync_serviceaccount }}"
+    resource_kind: cluster-role
+    resource_name: cluster-admin
+
+- name: Generate LDAP sync job
+  template:
+    src: "{{ role_path }}/files/ldapsync/ldapsync-job.yaml.j2"
+    dest: "{{ openshift_config_dir }}/ldapsync/ldapsync-job.yaml"
+
+- name: Check if LDAP sync configmap exist
+  command: |
+    oc get configmap {{ openshift_ldapsync_configmap_name }} \
+    -n {{ openshift_ldapsync_namespace }}
+  register: ldapsync_cm_exist
+  ignore_errors: yes
+  no_log: true
+    
+- name: Create LDAP sync configmap
+  command: |
+    oc create configmap {{ openshift_ldapsync_configmap_name }} \
+    --from-file={{ openshift_config_dir }}/ldapsync/ldapsync.yml,{{ openshift_config_dir }}/ldapsync/ldapsync.whitelist,{{ openshift_config_dir }}/bindPassword.encrypted,{{openshift_config_dir }}/bindPassword.key \
+    -n {{ openshift_ldapsync_namespace }}
+  when: ldapsync_cm_exist.rc == 1
+
+- name: Geneare LDAP sync configmap for replace
+  command: |
+    oc create configmap {{ openshift_ldapsync_configmap_name }} \
+    --from-file={{ openshift_config_dir }}/ldapsync/ldapsync.yml,{{ openshift_config_dir }}/ldapsync/ldapsync.whitelist,{{openshift_config_dir }}/bindPassword.encrypted,{{openshift_config_dir }}/bindPassword.key \
+    --dry-run -o yaml 
+  when: ldapsync_cm_exist.rc == 0
+  register: output
+
+- name: Replace config map
+  command: "echo {{ output.stdout_lines }} | oc replace -f - "
+  when: ldapsync_cm_exist.rc == 0
+
+- name: Check if LDAP sync job exist
+  command: |
+    oc get cronjob ldapsync \
+    -n {{ openshift_ldapsync_namespace }}
+  register: ldapsync_exist
+  ignore_errors: yes
+  no_log: true
+
+- name: Create LDAP sync job sync
+  command: |
+    oc create -f {{openshift_config_dir }}/ldapsync/ldapsync-job.yaml \
+    -n {{ openshift_ldapsync_namespace }}
+  when: ldapsync_exist.rc == 1
+
+- name: Replace LDAP sync job sync
+  command: |
+    oc replace -f {{openshift_config_dir }}/ldapsync/ldapsync-job.yaml \
+    -n {{ openshift_ldapsync_namespace }}
+  when: ldapsync_exist.rc == 0

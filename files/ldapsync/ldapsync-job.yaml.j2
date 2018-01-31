@@ -1,0 +1,28 @@
+apiVersion: batch/v2alpha1
+kind: CronJob
+metadata:
+  name: ldapsync
+spec:
+  schedule: "{{ openshift_ldapsync_schedule }}" 
+  jobTemplate:             
+    spec:
+      template:
+        metadata:
+          labels:          
+            parent: "ldapsync"
+        spec:
+          containers:
+          #TODO: add init container to delete old jobs when new job runs
+          - name: ldapsync
+            image: openshift3/ose
+            #sudo oc adm groups sync --sync-config=/usr/local/ldap/ldapsync.yaml --whitelist=/usr/local/ldap/ldapsync.whitelist
+            command: ["oc", "adm", "groups", "sync", "--sync-config=/usr/local/ldap/ldapsync.yml", "--whitelist=/usr/local/ldap/ldapsync.whitelist","--confirm"]
+            volumeMounts:
+              - name: ldapconfig-volume
+                mountPath: /usr/local/ldap
+          serviceAccountName: {{ openshift_ldapsync_serviceaccount }}       
+          volumes:
+          - name: ldapconfig-volume
+            configMap:
+              name: {{ openshift_ldapsync_configmap_name }}
+          restartPolicy: OnFailure  
