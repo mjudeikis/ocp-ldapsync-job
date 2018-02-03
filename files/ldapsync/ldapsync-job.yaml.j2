@@ -11,8 +11,11 @@ spec:
           labels:          
             parent: "ldapsync"
         spec:
+          initContainers:
+          - name: init-housekeeping
+            image: openshift3/ose
+            command: ["oc", "delete", "pod", "-l", "parent=ldapsync"]
           containers:
-          #TODO: add init container to delete old jobs when new job runs
           - name: ldapsync
             image: openshift3/ose
             #sudo oc adm groups sync --sync-config=/usr/local/ldap/ldapsync.yaml --whitelist=/usr/local/ldap/ldapsync.whitelist
