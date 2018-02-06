@@ -11,10 +11,8 @@ spec:
           labels:          
             parent: "ldapsync"
         spec:
-          initContainers:
-          - name: init-housekeeping
-            image: openshift3/ose
-            command: ["oc", "delete", "pod", "-l", "parent=ldapsync"]
+          successfulJobsHistoryLimit: 3 
+          failedJobsHistoryLimit: 1     
           containers:
           - name: ldapsync
             image: openshift3/ose
