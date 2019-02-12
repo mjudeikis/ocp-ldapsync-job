@@ -26,4 +26,10 @@ spec:
           - name: ldapconfig-volume
             configMap:
               name: {{ openshift_ldapsync_configmap_name }}
-          restartPolicy: OnFailure  
+          restartPolicy: OnFailure
+{% if openshift_ldapsync_nodeselector is iterable and openshift_ldapsync_nodeselector | length > 0 %}
+          nodeSelector:
+{% for key, value in openshift_ldapsync_nodeselector.items() %}
+            {{ key }}: "{{ value }}"
+{% endfor %}
+{% endif %}
